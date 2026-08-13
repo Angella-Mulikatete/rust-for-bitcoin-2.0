@@ -35,21 +35,75 @@ Answer in your own words. Add both ownership compiler errors from Part 7 as
 fenced text blocks, then explain what caused each.
 
 1. Why is `LoanStatus` an enum rather than a `bool` plus two `Option` fields?
+
+   > An item's loan state is inherently "one of" — `Available`, `OnLoan`, or `Lost` — never more than one at once. A `bool` plus two `Option` fields can't express that exclusivity in the type itself: nothing stops `is_on_loan: false` from coexisting with `member_id: Some(100)`, an invalid state the compiler would happily accept. The enum makes that combination impossible to construct, so every function that touches `LoanStatus`can trust it's always in exactly one valid shape.
+
 2. What does `match` force you to do when a fourth `MediaKind` is added later?
+
+   > `match` is exhaustive — the compiler rejects the code if any variant is unhandled and there's no `_` catch-all. So adding a fourth `MediaKind` variant (say `Magazine`) doesn't fail quietly at runtime; it fails to *compile*, at every single `match` over `MediaKind` anywhere in the crate that doesn't already have a wildcard arm. The compiler finds every call site that needs a decision for the new variant — there's no way to forget one.
+
 3. `Item::new` takes `String` rather than `&str`. Who owns the title afterwards?
+
+   > `Item::new` takes `title: String` by value, so the `String` is moved into the new `Item` — the `Item` now owns its title outright. If it took `&str` instead, the `Item` would be borrowing someone else's data, which means it could only live as long as whatever it borrowed from — a `library` full of `Item`s couldn't outlive the `String`s the caller built them from. Taking ownership means an `Item` is self-contained and can be stored in the `Library`'s `Vec<Item>` indefinitely, with no lifetime tied to the caller
+
 4. Why does `add_item` take `self` by `&mut` but `item` by value?
+
+   > _answer_
+
 5. When `add_item` returns `Err`, what happened to the `Item` the caller passed
    in? Was that a good design choice, and what is the alternative?
+
+   > _answer_
+
 6. Why does `find_item` return `Option<&Item>` rather than `Option<Item>`?
+
+   > _answer_
+
 7. What is the lifetime `'a` in `items_by_author` actually saying?
+
+   > _answer_
+
 8. Why can't `checkout` hold a `&mut Item` and a `&mut Member` from the same
    `Library` at once, and how did you structure the method around that?
+
+   > _answer_
+
 9. Why are `Library`'s fields private?
+
+   > _answer_
+
 10. What duplication does the provided `late_fee_cents` remove, and what would
     you lose by making it a free function instead?
+
+    > _answer_
+
 11. Why is `Result` preferable to `panic!` for validation failures? Name a
     place in this crate where a panic would be defensible.
+
+    > _answer_
+
 12. Which derive did you deliberately leave off a type, and why?
+
+    > _answer_
+
+### Ownership experiments (Part 7)
+
+**Experiment A** — read `item.title` after `library.add_item(item)?`.
+
+```text
+paste the real `cargo check` error here
+```
+
+> _explanation_
+
+**Experiment B** — hold the result of `library.find_item(1)`, call
+`library.checkout(..)?`, then print what you held.
+
+```text
+paste the real `cargo check` error here
+```
+
+> _explanation_
 
 ## Design notes
 
