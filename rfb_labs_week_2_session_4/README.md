@@ -48,12 +48,13 @@ fenced text blocks, then explain what caused each.
 
 4. Why does `add_item` take `self` by `&mut` but `item` by value?
 
-   > _answer_
+    > `self: &mut Library` because `add_item` needs to mutate the library's internal state (push into `items`) without taking ownership of the `Library` itself — the caller keeps using their `library` variable after the call returns; a `&mut` borrow is enough to modify it in place.
+   > `item: Item` by value, on the other hand, because the library needs to *keep* the item forever, stored in its `Vec<Item>` — you can't store a borrowed reference there without giving `Library` a lifetime tied to wherever the caller's `Item` came from. Taking ownership is how the `Item` is handed off permanently.
 
 5. When `add_item` returns `Err`, what happened to the `Item` the caller passed
    in? Was that a good design choice, and what is the alternative?
 
-   > _answer_
+   > Because `item: Item` is taken by value, ownership moves into `add_item` at the call site — the caller has already lost direct access to it before the function body even runs. If `add_item` returns `Err`, the `Item` is simply dropped at the end of the function; its data is gone for good. For a *recoverable* error like a duplicate id, that's a questionable tradeoff — the caller may have done real work building that `Item` and now has to rebuild it from scratch just to retry with a different id. The alternative, used by `std::sync::mpsc::Sender::send(`Result<(), SendError<T>>`), is to hand the value back inside the error: something like `Result<(), (LibraryError, Item)>`, so a failed call returns both *why* it failed and the `Item` to retry with.
 
 6. Why does `find_item` return `Option<&Item>` rather than `Option<Item>`?
 
