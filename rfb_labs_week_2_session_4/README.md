@@ -58,7 +58,8 @@ fenced text blocks, then explain what caused each.
 
 6. Why does `find_item` return `Option<&Item>` rather than `Option<Item>`?
 
-   > _answer_
+   > `find_item` only needs to answer "does an item with this id exist, and if so, what does it look like right now" — the `Item` itself never leaves `self.items`, so there's no reason to hand back an owned copy. Returning `Option<&Item>` borrows straight from `self` at zero cost: no cloning a `String` title/author just to answer a lookup. It's also the honest signature for what the data actually is — an `Item`'s state (especially `LoanStatus`) belongs to the `Library` and can change out from under a stale copy, so a borrowed reference, tied to `self`'s lifetime, is the only way to guarantee the caller is always looking at the library's current record rather than a snapshot that might already be wrong.
+
 
 7. What is the lifetime `'a` in `items_by_author` actually saying?
 
