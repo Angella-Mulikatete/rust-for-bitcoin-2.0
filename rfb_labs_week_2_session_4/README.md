@@ -133,9 +133,12 @@ fenced text blocks, then explain what caused each.
 
 ## Design notes
 
-Describe any choices you made, including how you kept an item's status and its
-borrower's list from drifting apart, and (if attempted) the optional generic
-search.
+   > `checkout` and `return_item` both split their work into two phases: validate using only immutable borrows (`find_item`/`find_member`), then mutate using two separate `iter_mut().find(...)` calls, one for the item and one for the member, each ended before the next begins. This is what lets both mutations happen inside a single `&mut self` call without the borrow checker rejecting overlapping mutable borrows — see the write-up for question 8. Keeping the two data structures in agreement isn't enforced by the type system on its own; it's enforced by every path that changes one of them (`checkout`, `return_item`) always changing the other in the same call, and by `Library`'s fields being private so nothing outside these methods can touch either list independently (question 9).
+
+   > The `.unwrap()` calls in both methods, re-finding the item/member by id after already validating their existence a few lines above, are a deliberate use of an infallible-in-practice operation rather than routing an impossible case through `Result`. Nothing between the initial `find_item`/`find_member` lookup and the later `iter_mut().find(...)` removes anything from `self.items`/`self.members`, so the second lookup cannot fail; if it ever did, that would indicate a bug in this method's own logic, not bad caller input — exactly the class of failure `panic!`/`.unwrap()` is appropriate for (question 11).
+
+   > I did not attempt the optional Part 9 generic `filter_items`. `items_by_author` and `available_items` are both `self.items.iter().filter(...).collect()` with only the predicate differing, so a `fn filter_items(&self, predicate: impl Fn(&Item) -> bool) -> Vec<&Item>` would let both be re-expressed as one-liners calling it with a closure.
+
 
 ## Example output
 
