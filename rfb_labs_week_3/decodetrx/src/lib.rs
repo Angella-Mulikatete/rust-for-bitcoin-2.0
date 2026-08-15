@@ -32,10 +32,10 @@ fn take_bytes<'a>(bytes: &mut &'a [u8], n: usize) -> Result<&'a [u8], Error> {
 }
 
 
-#[allow(unused_variables)]
-fn read_version(transaction_hex: &str) -> u32 {
+// #[allow(unused_variables)]
+// fn read_version(transaction_hex: &str) -> u32 {
  
-}
+// }
 
 fn read_u64(transaction_bytes: &mut &[u8]) -> Result<u64, Error> {
     let bytes = take_bytes(transaction_bytes, 8)?;
@@ -93,9 +93,10 @@ fn read_script_size(transaction_bytes: &mut &[u8]) -> Result<String, Error> {
 }
 
 
-fn read_version_byte(transaction_bytes: &mut &[u8]) -> Result<u32, Error> {
+// fn read_version_byte(transaction_bytes: &mut &[u8]) -> Result<u32, Error> {
 
-}
+// }
+
 // Bitcoin uses little-endian encoding for most of its numeric fields, meaning the least significant byte comes first.
 
 fn hash_row_transaction(row_transaction_bytes: &[u8]) -> Result<Txid, Error> {
@@ -108,6 +109,66 @@ fn hash_row_transaction(row_transaction_bytes: &[u8]) -> Result<Txid, Error> {
 
 
 pub fn decode_transaction(transaction_hex: String) -> Result<String, Box<dyn std::error::Error>> {
-    
+    let raw_bytes = hex::decode(transaction_hex.trim())?;
+    let mut cursor: &[u8] = &raw_bytes[..];
 
+    let version = read_u32(&mut cursor)?;
+    let after_version = raw_bytes.len() - cursor.len();
+
+    let is_segwit = cursor.first() == Some(&0x00);
+    if is_segwit {
+        take_bytes(&mut cursor, 2)?; // marker (0x00) + flag (0x01)
+    }
+    let after_marker_flag = raw_bytes.len() - cursor.len();
+
+    let input_count = read_compact_size(&mut cursor)?;
+    let mut inputs = Vec::with_capacity(input_count as usize);
+    for _ in 0..input_count {
+        inputs.push(Input {
+            txid: read_txid(&mut cursor)?,
+            output_index: read_u32(&mut cursor)?,
+            script_sig: read_script_size(&mut cursor)?,
+            sequence: read_u32(&mut cursor)?,
+            witness: Vec::new(),
+        });
+    }
+
+    let output_count = read_compact_size(&mut cursor)?;
+    let mut outputs = Vec::with_capacity(output_count as usize);
+    for _ in 0..output_count {
+        outputs.push(Output {
+            amount: read_amount(&mut cursor)?,
+            script_pubkey: read_script_size(&mut cursor)?,
+        });
+    }
+    let before_witness = raw_bytes.len() - cursor.len();
+
+    if is_segwit {
+        for input in inputs.iter_mut() {
+            let item_count = read_compact_size(&mut cursor)?;
+            let mut items = Vec::with_capacity(item_count as usize);
+            for _ in 0..item_count {
+                let item_len = read_compact_size(&mut cursor)? as usize;
+                items.push(hex::encode(take_bytes(&mut cursor, item_len)?));
+            }
+            input.witness = items;
+        }
+    }
+    let after_witness = raw_bytes.len() - cursor.len();
+
+    let lock_time = read_u32(&mut cursor)?;
+
+    let transaction_id = if is_segwit {
+        let mut legacy_bytes = Vec::new();
+        legacy_bytes.extend_from_slice(&raw_bytes[..after_version]);
+        legacy_bytes.extend_from_slice(&raw_bytes[after_marker_flag..before_witness]);
+        legacy_bytes.extend_from_slice(&raw_bytes[after_witness..]);
+        hash_row_transaction(&legacy_bytes)?
+    } else {
+        hash_row_transaction(&raw_bytes)?
+    };
+
+    let transaction = Transaction { transaction_id, version, inputs, outputs, lock_time };
+
+    Ok(serde_json::to_string_pretty(&transaction)?)
 }

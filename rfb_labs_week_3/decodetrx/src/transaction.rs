@@ -19,19 +19,21 @@ pub struct Input {
     pub output_index: u32,
     // pub script_sig: Vec<u8>,
     pub script_sig: String,
-    pub sequence: u32
+    pub sequence: u32,
+    pub witness: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct Output {
     #[serde(serialize_with = "as_btc")]
     pub amount: Amount,
-    pub script_pubkey: Vec<u8>,
+    pub script_pubkey: String,
 }
 
 fn as_btc<S: Serializer, T: BitcoinValue>(t: &T, s: S) -> Result<S::Ok, S::Error> {
-
+    s.serialize_f64(t.to_btc())
 }
+
 
 #[derive(Debug)]
 pub struct Amount( u64);
