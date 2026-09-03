@@ -8,10 +8,10 @@ use crate::{LabError, LabResult};
 
 /// Identify an address family from its human-readable prefix.
 pub fn identify_prefix(address: &str) -> AddressFormat {
-    if address.starts_with('1') || address.starts_with('m') || address.starts_with('n'){
+    if address.starts_with('1') || address.starts_with('m') || address.starts_with('n') {
         return AddressFormat::P2pkh;
     }
-    if address.starts_with('3') || address.starts_with('2'){
+    if address.starts_with('3') || address.starts_with('2') {
         return AddressFormat::P2sh;
     }
 
@@ -27,9 +27,11 @@ pub fn identify_prefix(address: &str) -> AddressFormat {
 
 /// Return the expected human-readable prefix for a format on a selected network.
 pub fn expected_prefix(format: AddressFormat, network: Network) -> Option<&'static str> {
-    match(format, network){
+    match (format, network) {
         (AddressFormat::P2pkh, Network::Bitcoin) => Some("1"),
-        (AddressFormat::P2pkh, Network::Testnet | Network::Signet | Network::Regtest) => Some("m/n"),
+        (AddressFormat::P2pkh, Network::Testnet | Network::Signet | Network::Regtest) => {
+            Some("m/n")
+        }
         (AddressFormat::P2sh, Network::Bitcoin) => Some("3"),
         (AddressFormat::P2sh, Network::Testnet | Network::Signet | Network::Regtest) => Some("2"),
         (AddressFormat::P2wpkh, Network::Bitcoin) => Some("bc1q"),
@@ -46,7 +48,9 @@ pub fn inspect_address(address: &str, network: Network) -> LabResult<AddressRepo
         .parse::<Address<NetworkUnchecked>>()
         .map_err(|error| LabError::InvalidAddress(error.to_string()))?;
 
-    let checked = unchecked.require_network(network).map_err(|error| LabError::WrongNetwork(error.to_string()))?;
+    let checked = unchecked
+        .require_network(network)
+        .map_err(|error| LabError::WrongNetwork(error.to_string()))?;
 
     let format = match checked.address_type() {
         Some(AddressType::P2pkh) => AddressFormat::P2pkh,
@@ -55,11 +59,11 @@ pub fn inspect_address(address: &str, network: Network) -> LabResult<AddressRepo
         Some(AddressType::P2tr) => AddressFormat::P2tr,
         _ => AddressFormat::Unknown,
     };
-    Ok(AddressReport { 
+    Ok(AddressReport {
         address: checked.to_string(),
         network: network.to_string(),
-        format, 
-        script_pubkey_hex: checked.script_pubkey().to_hex_string(), 
+        format,
+        script_pubkey_hex: checked.script_pubkey().to_hex_string(),
     })
 }
 
